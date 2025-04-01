@@ -31,19 +31,43 @@ module.exports = (sequelize, DataTypes) => {
         isEmail: true
       }
     },
+    countryCode: {
+      type: DataTypes.INTEGER,
+      validate: {
+        len: [1, 2]
+      }
+    },
     phone: {
       type: DataTypes.INTEGER,
-      allowNull: false,
       unique: true,
       validate: {
-        len: [10, 12]
+        len: [10]
       }
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        len: [6, 25]
+        len: [6, 25],
+        safePassword(password){
+          const cap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+          const num = '1234567890'
+          const sym = '!@$%^&*+#'
+          const passwordCheck = {cap: 0, low: 0, num: 0, sym: 0}
+
+          for(let i=0; i<password.length; i++){
+            if(cap.includes(password[i])) passwordCheck.cap++
+            else if(cap.toLowerCase().includes(password[i])) passwordCheck.low++
+            else if(num.includes(password[i])) passwordCheck.num++
+            else if(sym.includes(password[i])) passwordCheck.sym++
+            else throw new Error(`"${password[i]}" is an invalid character`)
+          }
+          Object.keys(passwordCheck).forEach(key=>{
+            if(passwordCheck[key] === 0){
+              throw new Error("Password must include a uppercased letter, a lowercased letter, a number, and one special character (!@$%^&*+#).")
+            }
+          })
+        }
       }
     },
   }, {

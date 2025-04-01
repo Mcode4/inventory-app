@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // define association here
       Folder.hasMany(models.File, {foreignKey: "folderId"})
-      Folder.belongsTo(models.User, {foreignKey: "userId"})
+      Folder.belongsTo(models.User, {foreignKey: "ownerId"})
     }
   }
   Folder.init({

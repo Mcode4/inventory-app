@@ -25,9 +25,14 @@ module.exports = {
           isEmail: true
         }
       },
+      countryCode: {
+        type: Sequelize.INTEGER,
+        validate: {
+          len: [1, 2]
+        }
+      },
       phone: {
         type: Sequelize.INTEGER,
-        allowNull: false,
         unique: true,
         validate: {
           len: [10, 12]
