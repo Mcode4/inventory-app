@@ -51,7 +51,7 @@ router.post("/:ownerId", async(req, res)=>{
     if(!name){
         return res.status(400).json({
             message: "Validation Error",
-            errors: "Folder name is required"
+            errors: "Name is required"
         })
     }
 
@@ -62,8 +62,36 @@ router.post("/:ownerId", async(req, res)=>{
         newFolder = await Folder.create({
             ownerId,
             name,
-            template
+            template,
+            order: null
         })
+        // Sorting algorithm to find order
+        let folders = await Folder.findAll({where:{ownerId}, order: [["name", "DESC"]]})
+        let i=1
+        let newFolderOrder
+
+        folders.forEach(folder=>{
+            folder.update({order: i})
+
+            if(folder.id === newFolder.id){
+                newFolderOrder = i
+            }
+
+            i++
+        })
+
+        //Then
+        return res.status(201).json({
+            message: "Successfully created folder",
+            folder: {
+                id: newFolder.id,
+                ownerId: newFolder.ownerId,
+                name: newFolder.name,
+                template: newFolder.template,
+                order: newFolderOrder
+            }
+        })
+
     } catch(error){
         console.error("Error creating folder:", error)
         return res.status(400).json({
@@ -72,28 +100,15 @@ router.post("/:ownerId", async(req, res)=>{
         })
     }
 
-    // Sorting algorithm to find order
-    const folders = await Folder.findall({where:{ownerId}})
-
-    console.log(folders) // Create loop and update the orders
-
-    //Then
-    return res.status(201).json({
-        message: "Successfully created folder",
-        folder: {
-            id: newFolder.id,
-            ownerId: newFolder.ownerId,
-            name: newFolder.name,
-            template: newFolder.template,
-            order: newFolder.order
-        }
-    })
+    
 })
 
 // Edit a folder
-router.put("/:id", async(req, res)=>{
-    const { id } = req.params
-    const folder = await Folder.findByPk(id)
+router.put("/:folderId", async(req, res)=>{
+    const { folderId } = req.params
+    const folder = await Folder.findByPk(folderId)
+    let orderUpdate = false
+    
     if(!folder){
         return res.status(404).json({
             message: "Folder not found",
@@ -106,13 +121,25 @@ router.put("/:id", async(req, res)=>{
             delete req.body[key] // remove any unwanted keys from the request body
             console.log(`"${key}" is not a valid field for update, deleting from request body`)
         }
+        if(key === 'name') orderUpdate = true
     })
-
-    // Validate if order if between the first and last order or is 1 or 1 number from last
-    // Update the order if needed
 
     try{
         folder.update(req.body)
+        let folderOrder
+
+        if(orderUpdate){
+            const ownerId = folder.ownerId
+            let folders = await Folder.findAll({where: {ownerId}, order: [["name", "DESC"]]})
+            let i=1
+
+            folders.forEach(folder2=>{
+                folder2.update({order: i})
+                if(folder2.id === folder.id) folderOrder = i
+
+                i++
+            })
+        }
 
         return res.status(200).json({
             message: "Successfully updated folder",
@@ -121,7 +148,7 @@ router.put("/:id", async(req, res)=>{
                 ownerId: folder.ownerId,
                 name: folder.name,
                 template: folder.template,
-                order: folder.order
+                order: folderOrder || folder.order
             }
         })
     } catch(error){

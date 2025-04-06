@@ -39,6 +39,7 @@ router.get("/:ownerId", async(req, res)=>{
 router.post("/:ownerId", async(req, res)=>{
     const { ownerId } = req.params
     let { name, template } = req.body // template is optional
+    let orderUpdate = false
 
     const user = User.findByPk(ownerId)
     if(!user){
@@ -63,8 +64,36 @@ router.post("/:ownerId", async(req, res)=>{
             ownerId,
             name,
             template,
-            data : null
+            data : null,
+            order: null
         })
+        // Sorting algorithm to find order
+        let files = await File.findAll({where:{ownerId}, order: [["name", "DESC"]]})
+        let i=1
+        let newFileOrder
+
+        files.forEach(file=>{
+            file.update({order: i})
+
+            if(file.id === newFile.id){
+                newFileOrder = i
+            }
+
+            i++
+        })
+
+        //Then
+        return res.status(201).json({
+            message: "Successfully created file",
+            file: {
+                id: newFile.id,
+                ownerId: newFile.ownerId,
+                name: newFile.name,
+                template: newFile.template,
+                order: newFileOrder
+            }
+        })
+
     } catch(error){
         console.error("Error creating file:", error)
         return res.status(400).json({
@@ -72,24 +101,6 @@ router.post("/:ownerId", async(req, res)=>{
             error: error.message || "Something when wrong creating file"
         })
     }
-
-    // Sorting algorithm to find order
-    const files = await File.findall({where:{ownerId}})
-
-    console.log(files) // Create loop and update the orders
-
-    //Then
-    return res.status(201).json({
-        message: "Successfully created file",
-        file: {
-            id: newFile.id,
-            ownerId: newFile.ownerId,
-            name: newFile.name,
-            template: newFile.template,
-            order: newFile.order,
-            data: newFile.data
-        }
-    })
 })
 
 // Edit a file
@@ -108,13 +119,25 @@ router.put("/:id", async(req, res)=>{
             delete req.body[key] // remove any unwanted keys from the request body
             console.log(`"${key}" is not a valid field for update, deleting from request body`)
         }
+        if(key === 'name') orderUpdate = true
     })
-
-    // Validate if order if between the first and last order or is 1 or 1 number from last
-    // Update the order if needed
 
     try{
         file.update(req.body)
+        let fileOrder
+
+        if(orderUpdate){
+            const ownerId = file.ownerId
+            let files = await File.findAll({where: {ownerId}, order: [["name", "DESC"]]})
+            let i=1
+
+            files.forEach(file2=>{
+                file2.update({order: i})
+                if(file2.id === file.id) fileOrder = i
+
+                i++
+            })
+        }
 
         return res.status(200).json({
             message: "Successfully updated file",
@@ -123,8 +146,7 @@ router.put("/:id", async(req, res)=>{
                 ownerId: file.ownerId,
                 name: file.name,
                 template: file.template,
-                order: file.order,
-                data: file.data
+                order: fileOrder || file.order
             }
         })
     } catch(error){
