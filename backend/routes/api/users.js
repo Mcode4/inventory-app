@@ -36,8 +36,10 @@ router.post("", async(req, res)=>{
     if(await User.findOne({where: {email}})){
         errors.email = "User with the email already exists"
     }
-    if(await User.findOne({where: {countryCode, phone}})){
-        errors.phone = "User with phone already exists"
+    if(phone){
+        if(await User.findOne({where: {countryCode, phone}})){
+            errors.phone = "User with phone already exists"
+        }
     }
     if(Object.keys(errors).length > 0){
         return res.status(500).json({

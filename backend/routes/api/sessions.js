@@ -1,5 +1,5 @@
 const router = require("express").Router()
-const { Op } = require("sequelize")
+const { Op, where } = require("sequelize")
 const { User } = require("../../db/models")
 
 const { setTokenCookie } = require("../../utils/auth")
@@ -21,10 +21,10 @@ router.get("", (req, res)=>{
 })
 
 router.post("", async(req, res)=>{
-    const { credential, password } = req.body
+    let { credential, password } = req.body
     const errors = {}
 
-    if(!credentails) errors.credentials = "Email or username is required"
+    if(!credential) errors.credential = "Email or phone is required"
     if(!password) errors.password = "Password is required"
 
     if(Object.keys(errors).length > 0){
@@ -33,20 +33,24 @@ router.post("", async(req, res)=>{
             errors
         })
     }
-
-    const user = await User.unscoped().findOne({
-        where: {
-            [Op.or]: {
-                email: credential,
-                phone: credential
-            },
-            password: password
-        }
-    })
-
+    let user = null
+    if(credential.includes("-")){
+        credential = credential.split("-").join("")
+    }
+    if(Number(credential) === NaN){
+        user = await User.unscoped().findOne({where:{phone: Number(credential)}})
+    } else{
+        user = await User.unscoped().findOne({where:{email: credential}})
+    }
+    
     if(!user){
-        res.status(401).json({
-            message: "Invalid credentials"
+        return res.status(401).json({
+            message: "No user found"
+        })
+    } 
+    else if(user.password !== password){
+        return res.status(401).json({
+            message: "Invalid password"
         })
     }
     const safeUser = {
